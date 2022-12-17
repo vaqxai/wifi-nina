@@ -9,4 +9,4 @@ Thanks to those who contributed to the original repository.
 ## License
 
 All commits after [`cc18a6e`](https://github.com/cgm616/wifi-nina/commit/cc18a6e47a822ef016bf2db084ea60f5586c3e64) are licensed under the [MIT license](https://github.com/cgm616/wifi-nina/blob/master/LICENSE) found in this repository.
-
+All commits before and including `cc18a6e` are licensed under the MIT license or the Apache-2.0 license as found in the [original project's `Cargo.toml`](https://github.com/dflemstr/wifi-nina/blob/master/Cargo.toml).
