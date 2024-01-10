@@ -104,6 +104,8 @@ where
 
                 let status = self.handler.get_connection_state()?;
 
+                self.handler.delay(time::Duration::from_millis(100))?;
+
                 if status != ConnectionState::ApListening {
                     return Err(error::Error::BadConnectionStatus(
                         num_enum::TryFromPrimitiveError { number: status.into() },
