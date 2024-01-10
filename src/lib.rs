@@ -19,7 +19,7 @@ const BUFFER_CAPACITY: usize = 4096;
 
 #[derive(Debug)]
 pub struct Wifi<T> {
-    handler: handler::Handler<T>,
+    pub handler: handler::Handler<T>,
     led_init: bool,
 }
 
