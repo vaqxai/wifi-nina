@@ -18,7 +18,7 @@ pub enum NetworkConfig<'a> {
     // TODO: WPA2 enterprise etc
 }
 
-// channel is optional, default 1
+/// channel is optional, default 1 if you put None in
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AccessPointConfig<'a> {
     pub network: NetworkConfig<'a>,

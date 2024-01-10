@@ -14,6 +14,7 @@ pub mod transport;
 pub mod types;
 
 pub use error::Error;
+use types::ConnectionState;
 
 const BUFFER_CAPACITY: usize = 4096;
 
@@ -62,6 +63,7 @@ where
         Ok(())
     }
 
+    /// doesn't actually timeout, it does 10 tries in AP mode, and 1 in station mode
     pub fn configure(
         &mut self,
         config: types::Config,
@@ -84,6 +86,23 @@ where
                         self.handler.set_ap_passphrase(ssid, password, channel)?
                     }
                 }
+
+                let mut tries = 0;
+
+                while tries < 10{
+                    tries += 1;
+
+                    // TODO: Actual Timeout
+                    self.handler.delay(time::Duration::from_millis(100))?;
+
+                    let status = self.handler.get_connection_state()?;
+
+                    if (status != ConnectionState::IdleStatus) && (status != ConnectionState::NoSsidAvail) && (status != ConnectionState::ScanCompleted) {
+                        break;
+                    }
+                }
+
+
             },
         }
 
