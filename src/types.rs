@@ -18,10 +18,11 @@ pub enum NetworkConfig<'a> {
     // TODO: WPA2 enterprise etc
 }
 
+// channel is optional, default 1
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AccessPointConfig<'a> {
-    pub ssid: &'a [u8],
-    pub password: &'a [u8],
+    pub network: NetworkConfig<'a>,
+    pub channel: Option<u8>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

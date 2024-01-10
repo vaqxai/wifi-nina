@@ -5,6 +5,8 @@ pub enum Error<E> {
     Transport(E),
     SetNetwork,
     SetPassphrase,
+    SetApNetwork,
+    SetApPassphrase,
     SetKey,
     SetIpConfig,
     SetDnsConfig,

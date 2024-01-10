@@ -260,6 +260,53 @@ where
         }
     }
 
+    pub fn set_ap_network(&mut self, ssid: &[u8], channel: u8) -> Result<(), error::Error<T::Error>> {
+        let send_params = (
+            param::NullTerminated::new(ssid),
+            channel,
+        );
+        let mut recv_params = (0u8,);
+
+        self.handle_cmd(command::Command::SetApNetCmd, &send_params, &mut recv_params)?;
+
+        let (status,) = recv_params;
+
+        if status == 1 {
+            Ok(())
+        } else {
+            Err(error::Error::SetApNetwork)
+        }
+    }
+
+    pub fn set_ap_passphrase(
+        &mut self,
+        ssid: &[u8],
+        passphrase: &[u8],
+        channel: u8,
+    ) -> Result<(), error::Error<T::Error>> {
+        let send_params = (
+            param::NullTerminated::new(ssid),
+            param::NullTerminated::new(passphrase),
+            channel,
+        );
+
+        let mut recv_params = (0u8,);
+
+        self.handle_cmd(
+            command::Command::SetApPassphraseCmd,
+            &send_params,
+            &mut recv_params,
+        )?;
+
+        let (status,) = recv_params;
+
+        if status == 1 {
+            Ok(())
+        } else {
+            Err(error::Error::SetApPassphrase)
+        }
+    }
+
     pub fn set_passphrase(
         &mut self,
         ssid: &[u8],

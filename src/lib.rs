@@ -74,7 +74,17 @@ where
                     self.handler.set_passphrase(ssid, password)?
                 }
             },
-            types::Config::AccessPoint(_) => unimplemented!(),
+            types::Config::AccessPoint(ap_config) => {
+                let channel = ap_config.channel.unwrap_or(1);
+                match ap_config.network {
+                    types::NetworkConfig::Open { ssid } => {
+                        self.handler.set_ap_network(ssid, channel)?
+                    }
+                    types::NetworkConfig::Password { ssid, password } => {
+                        self.handler.set_ap_passphrase(ssid, password, channel)?
+                    }
+                }
+            },
         }
 
         if let Some(connect_timeout) = connect_timeout {
