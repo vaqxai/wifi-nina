@@ -102,7 +102,13 @@ where
                     }
                 }
 
+                let status = self.handler.get_connection_state()?;
 
+                if status != ConnectionState::ApListening {
+                    return Err(error::Error::BadConnectionStatus(
+                        num_enum::TryFromPrimitiveError { number: status.into() },
+                    ));
+                }
             },
         }
 
