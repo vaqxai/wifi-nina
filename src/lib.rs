@@ -55,18 +55,11 @@ where
             self.handler.pin_mode(27, types::PinMode::Output)?;
             self.led_init = true;
         }
-
         let (redpin, greenpin, bluepin) = (25, 26, 27);
         #[cfg(feature="arduino-nano-connect")]
-        let (mut r, mut g, mut b) = (r,g,b);
-
+        let (redpin, greenpin, bluepin) = (26, 27, 25);
         #[cfg(feature="arduino-nano-connect")]
-        {
-            (redpin, greenpin, bluepin) = (26, 27, 25);
-            r = 255 - r;
-            g = 255 - g;
-            b = 255 - b;
-        }
+        let (r, g, b) = (255-r,255-g,255-b);
 
         self.handler.analog_write(redpin, r)?;
         self.handler.analog_write(greenpin, g)?;
