@@ -56,9 +56,19 @@ where
             self.led_init = true;
         }
 
-        self.handler.analog_write(25, r)?;
-        self.handler.analog_write(26, g)?;
-        self.handler.analog_write(27, b)?;
+        let (redpin, greenpin, bluepin) = (25, 26, 27);
+
+        #[cfg(feature="arduino_nano_connect")]
+        {
+            (redpin, greenpin, bluepin) = (26, 27, 25);
+            r = 255 - r;
+            g = 255 - g;
+            b = 255 - b;
+        }
+
+        self.handler.analog_write(redpin, r)?;
+        self.handler.analog_write(greenpin, g)?;
+        self.handler.analog_write(bluepin, b)?;
 
         Ok(())
     }
