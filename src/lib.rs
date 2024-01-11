@@ -59,18 +59,18 @@ where
         #[cfg(feature="arduino-nano-connect")]
         let (r, g, b) = (255-r,255-g,255-b);
 
-        #[cfg(feature="arduino-nano-connect")]
-        {
-            self.handler.analog_write(26, r)?;
-            self.handler.analog_write(27, g)?;
-            self.handler.analog_write(25, b)?;
-        }
-
         #[cfg(not(feature="arduino-nano-connect"))]
         {
-            self.handler.analog_write(27, r)?;
+            self.handler.analog_write(25 , r)?;
+            self.handler.analog_write(26, g)?;
+            self.handler.analog_write(27, b)?;
+        }
+
+        #[cfg(feature="arduino-nano-connect")]
+        {
             self.handler.analog_write(25, g)?;
             self.handler.analog_write(26, b)?;
+            self.handler.analog_write(27, r)?;
         }
 
         Ok(())
