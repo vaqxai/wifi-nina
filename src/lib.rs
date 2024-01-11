@@ -58,7 +58,7 @@ where
 
         let (redpin, greenpin, bluepin) = (25, 26, 27);
 
-        #[cfg(feature="arduino_nano_connect")]
+        #[cfg(feature="arduino-nano-connect")]
         {
             (redpin, greenpin, bluepin) = (26, 27, 25);
             r = 255 - r;
