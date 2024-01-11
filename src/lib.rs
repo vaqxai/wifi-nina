@@ -68,9 +68,9 @@ where
 
         #[cfg(not(feature="arduino-nano-connect"))]
         {
-            self.handler.analog_write(25, r)?;
-            self.handler.analog_write(26, g)?;
-            self.handler.analog_write(27, b)?;
+            self.handler.analog_write(27, r)?;
+            self.handler.analog_write(25, g)?;
+            self.handler.analog_write(26, b)?;
         }
 
         Ok(())
