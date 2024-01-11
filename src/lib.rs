@@ -57,6 +57,8 @@ where
         }
 
         let (redpin, greenpin, bluepin) = (25, 26, 27);
+        #[cfg(feature="arduino-nano-connect")]
+        let (mut r, mut g, mut b) = (r,g,b);
 
         #[cfg(feature="arduino-nano-connect")]
         {
