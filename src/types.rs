@@ -37,7 +37,9 @@ pub struct ScannedNetwork {
     pub channel: u8,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, num_enum::IntoPrimitive, num_enum::TryFromPrimitive,
+)]
 #[repr(u8)]
 pub enum PinMode {
     Input = 0,
@@ -45,7 +47,9 @@ pub enum PinMode {
     InputPullup = 2,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, num_enum::IntoPrimitive, num_enum::TryFromPrimitive,
+)]
 #[repr(u8)]
 pub enum ProtocolMode {
     Tcp = 0,
@@ -54,7 +58,9 @@ pub enum ProtocolMode {
     UdpMulticast = 3,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, num_enum::IntoPrimitive, num_enum::TryFromPrimitive,
+)]
 #[repr(u8)]
 pub enum ConnectionState {
     IdleStatus = 0,
@@ -69,7 +75,9 @@ pub enum ConnectionState {
     ApFailed = 9,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, num_enum::IntoPrimitive, num_enum::TryFromPrimitive,
+)]
 #[repr(u8)]
 pub enum TcpState {
     Closed = 0,
@@ -85,7 +93,9 @@ pub enum TcpState {
     TimeWait = 10,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, num_enum::IntoPrimitive, num_enum::TryFromPrimitive,
+)]
 #[repr(u8)]
 pub enum EncryptionType {
     Invalid = 0,

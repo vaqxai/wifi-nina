@@ -32,6 +32,14 @@ pub struct Client<T> {
     phantom: marker::PhantomData<T>,
 }
 
+#[derive(Debug)]
+pub struct ServerUdp<T> {
+    socket: types::Socket,
+    buffer_offset: usize,
+    buffer: arrayvec::ArrayVec<[u8; BUFFER_CAPACITY]>,
+    phantom: marker::PhantomData<T>,
+}
+
 impl<T> Wifi<T>
 where
     T: transport::Transport,
@@ -56,17 +64,17 @@ where
             self.led_init = true;
         }
 
-        #[cfg(feature="arduino-nano-connect")]
-        let (r, g, b) = (255-r,255-g,255-b);
+        #[cfg(feature = "arduino-nano-connect")]
+        let (r, g, b) = (255 - r, 255 - g, 255 - b);
 
-        #[cfg(not(feature="arduino-nano-connect"))]
+        #[cfg(not(feature = "arduino-nano-connect"))]
         {
-            self.handler.analog_write(25 , r)?;
+            self.handler.analog_write(25, r)?;
             self.handler.analog_write(26, g)?;
             self.handler.analog_write(27, b)?;
         }
 
-        #[cfg(feature="arduino-nano-connect")]
+        #[cfg(feature = "arduino-nano-connect")]
         {
             self.handler.analog_write(25, g)?;
             self.handler.analog_write(26, b)?;
@@ -76,7 +84,6 @@ where
         Ok(())
     }
 
-    /// doesn't actually timeout, it does 10 tries in AP mode, and 1 in station mode
     pub fn configure(
         &mut self,
         config: types::Config,
@@ -102,7 +109,7 @@ where
 
                 let mut tries = 0;
 
-                while tries < 10{
+                while tries < 10 {
                     tries += 1;
 
                     // TODO: Actual Timeout
@@ -110,7 +117,10 @@ where
 
                     let status = self.handler.get_connection_state()?;
 
-                    if (status != ConnectionState::IdleStatus) && (status != ConnectionState::NoSsidAvail) && (status != ConnectionState::ScanCompleted) {
+                    if (status != ConnectionState::IdleStatus)
+                        && (status != ConnectionState::NoSsidAvail)
+                        && (status != ConnectionState::ScanCompleted)
+                    {
                         break;
                     }
                 }
@@ -121,10 +131,12 @@ where
 
                 if status != ConnectionState::ApListening {
                     return Err(error::Error::BadConnectionStatus(
-                        num_enum::TryFromPrimitiveError { number: status.into() },
+                        num_enum::TryFromPrimitiveError {
+                            number: status.into(),
+                        },
                     ));
                 }
-            },
+            }
         }
 
         if let Some(connect_timeout) = connect_timeout {
@@ -162,10 +174,10 @@ where
         Err(error::Error::ConnectionFailure(actual_connection_state))
     }
 
-    pub fn scan_networks<'a>(
-        &'a mut self,
+    pub fn scan_networks(
+        &mut self,
     ) -> Result<
-        impl Iterator<Item = Result<types::ScannedNetwork, error::Error<T::Error>>> + 'a,
+        impl Iterator<Item = Result<types::ScannedNetwork, error::Error<T::Error>>> + '_,
         error::Error<T::Error>,
     > {
         self.handler.start_scan_networks()?;
@@ -305,5 +317,97 @@ where
             data = &mut data[len..];
         }
         Ok(())
+    }
+}
+
+impl<T> ServerUdp<T>
+where
+    T: transport::Transport,
+{
+    pub fn start_server(wifi: &mut Wifi<T>, port: u16) -> Result<Self, error::Error<T::Error>> {
+        match wifi.handler.start_udp_server(port) {
+            Ok(socket) => {
+                let buffer_offset = 0;
+                let buffer = arrayvec::ArrayVec::new();
+                let phantom = marker::PhantomData;
+                Ok(ServerUdp {
+                    socket,
+                    buffer_offset,
+                    buffer,
+                    phantom,
+                })
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn start_server_at_ip(
+        wifi: &mut Wifi<T>,
+        ip: no_std_net::Ipv4Addr,
+        port: u16,
+    ) -> Result<Self, error::Error<T::Error>> {
+        match wifi.handler.start_udp_server_multicast(ip, port) {
+            Ok(socket) => {
+                let buffer_offset = 0;
+                let buffer = arrayvec::ArrayVec::new();
+                let phantom = marker::PhantomData;
+                Ok(ServerUdp {
+                    socket,
+                    buffer_offset,
+                    buffer,
+                    phantom,
+                })
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn start_packet(
+        &mut self,
+        wifi: &mut Wifi<T>,
+        destination: no_std_net::Ipv4Addr,
+        dest_port: u16,
+    ) -> Result<(), error::Error<T::Error>> {
+        wifi.handler.begin_udp_packet(destination, dest_port)
+    }
+
+    pub fn write_data(
+        &mut self,
+        wifi: &mut Wifi<T>,
+        data: &[u8],
+    ) -> Result<(), error::Error<T::Error>> {
+        wifi.handler.udp_write(self.socket, data)
+    }
+
+    pub fn end_packet(&mut self, wifi: &mut Wifi<T>) -> Result<(), error::Error<T::Error>> {
+        wifi.handler.end_udp_packet(self.socket)
+    }
+
+    pub fn read_packet(
+        &mut self,
+        wifi: &mut Wifi<T>,
+        buffer: &mut [u8],
+    ) -> Result<usize, error::Error<T::Error>> {
+        if self.buffer_offset >= self.buffer.len() {
+            self.buffer.clear();
+            self.buffer
+                .try_extend_from_slice(&[0; BUFFER_CAPACITY])
+                .unwrap();
+            let recv_len = wifi
+                .handler
+                .get_data_buf(self.socket, self.buffer.as_mut())?;
+            self.buffer.truncate(recv_len);
+            self.buffer_offset = 0;
+            log::debug!("fetched new buffer of len {}", self.buffer.len());
+        }
+
+        let len = buffer.len().min(self.buffer.len() - self.buffer_offset);
+        buffer[..len].copy_from_slice(&self.buffer[self.buffer_offset..self.buffer_offset + len]);
+        self.buffer_offset += len;
+        Ok(len)
+    }
+
+    pub fn stop_server(self, wifi: &mut Wifi<T>) -> Result<(), error::Error<T::Error>> {
+        wifi.handler.stop_client(self.socket)
     }
 }

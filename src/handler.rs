@@ -6,6 +6,7 @@ use crate::param;
 use crate::params;
 use crate::transport;
 use crate::types;
+use crate::types::Socket;
 use core::fmt;
 use core::time;
 
@@ -13,6 +14,8 @@ use core::time;
 pub struct Handler<T> {
     transport: T,
 }
+
+type ScannedNetworks = arrayvec::ArrayVec<[arrayvec::ArrayVec<[u8; 32]>; 16]>;
 
 impl<T> Handler<T>
 where
@@ -88,12 +91,8 @@ where
         }
     }
 
-    pub fn get_scanned_networks(
-        &mut self,
-    ) -> Result<arrayvec::ArrayVec<[arrayvec::ArrayVec<[u8; 32]>; 16]>, error::Error<T::Error>>
-    {
-        let mut recv_params: arrayvec::ArrayVec<[arrayvec::ArrayVec<[u8; 32]>; 16]> =
-            arrayvec::ArrayVec::new();
+    pub fn get_scanned_networks(&mut self) -> Result<ScannedNetworks, error::Error<T::Error>> {
+        let mut recv_params: ScannedNetworks = arrayvec::ArrayVec::new();
 
         self.handle_cmd(command::Command::ScanNetworks, &(), &mut recv_params)?;
 
@@ -260,14 +259,45 @@ where
         }
     }
 
-    pub fn set_ap_network(&mut self, ssid: &[u8], channel: u8) -> Result<(), error::Error<T::Error>> {
+    pub fn set_passphrase(
+        &mut self,
+        ssid: &[u8],
+        passphrase: &[u8],
+    ) -> Result<(), error::Error<T::Error>> {
         let send_params = (
             param::NullTerminated::new(ssid),
-            channel,
+            param::NullTerminated::new(passphrase),
         );
         let mut recv_params = (0u8,);
 
-        self.handle_cmd(command::Command::SetApNetCmd, &send_params, &mut recv_params)?;
+        self.handle_cmd(
+            command::Command::SetPassphraseCmd,
+            &send_params,
+            &mut recv_params,
+        )?;
+
+        let (status,) = recv_params;
+
+        if status == 1 {
+            Ok(())
+        } else {
+            Err(error::Error::SetPassphrase)
+        }
+    }
+
+    pub fn set_ap_network(
+        &mut self,
+        ssid: &[u8],
+        channel: u8,
+    ) -> Result<(), error::Error<T::Error>> {
+        let send_params = (param::NullTerminated::new(ssid), channel);
+        let mut recv_params = (0u8,);
+
+        self.handle_cmd(
+            command::Command::SetApNetCmd,
+            &send_params,
+            &mut recv_params,
+        )?;
 
         let (status,) = recv_params;
 
@@ -304,32 +334,6 @@ where
             Ok(())
         } else {
             Err(error::Error::SetApPassphrase)
-        }
-    }
-
-    pub fn set_passphrase(
-        &mut self,
-        ssid: &[u8],
-        passphrase: &[u8],
-    ) -> Result<(), error::Error<T::Error>> {
-        let send_params = (
-            param::NullTerminated::new(ssid),
-            param::NullTerminated::new(passphrase),
-        );
-        let mut recv_params = (0u8,);
-
-        self.handle_cmd(
-            command::Command::SetPassphraseCmd,
-            &send_params,
-            &mut recv_params,
-        )?;
-
-        let (status,) = recv_params;
-
-        if status == 1 {
-            Ok(())
-        } else {
-            Err(error::Error::SetPassphrase)
         }
     }
 
@@ -591,6 +595,145 @@ where
         let state = types::TcpState::try_from(state).map_err(error::Error::BadTcpState)?;
 
         Ok(state)
+    }
+
+    pub fn start_server(
+        &mut self,
+        port: u16,
+        socket: u8,
+        protocol_mode: types::ProtocolMode,
+    ) -> Result<(), error::Error<T::Error>> {
+        let send_params = (param::Scalar::be(port), socket, u8::from(protocol_mode));
+        let mut recv_params = (0u8,);
+
+        self.handle_cmd(
+            command::Command::StartServerTcpCmd,
+            &send_params,
+            &mut recv_params,
+        )?;
+
+        let (status,) = recv_params;
+
+        if status == 1 {
+            Ok(())
+        } else {
+            Err(error::Error::StartServer)
+        }
+    }
+
+    pub fn start_server_by_ip(
+        &mut self,
+        ip: no_std_net::Ipv4Addr,
+        port: u16,
+        socket: u8,
+        protocol_mode: types::ProtocolMode,
+    ) -> Result<(), error::Error<T::Error>> {
+        let send_params = (
+            param::Scalar::be(u32::from(ip)),
+            param::Scalar::be(port),
+            socket,
+            u8::from(protocol_mode),
+        );
+        let mut recv_params = (0u8,);
+
+        self.handle_cmd(
+            command::Command::StartServerTcpCmd,
+            &send_params,
+            &mut recv_params,
+        )?;
+
+        let (status,) = recv_params;
+
+        if status == 1 {
+            Ok(())
+        } else {
+            Err(error::Error::StartServer)
+        }
+    }
+
+    pub fn start_udp_server(&mut self, port: u16) -> Result<Socket, error::Error<T::Error>> {
+        let socket = match self.get_socket() {
+            Ok(socket) => socket,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        self.start_server(port, socket.0, types::ProtocolMode::Udp)?;
+
+        Ok(socket)
+    }
+
+    pub fn start_udp_server_multicast(
+        &mut self,
+        ip: no_std_net::Ipv4Addr,
+        port: u16,
+    ) -> Result<Socket, error::Error<T::Error>> {
+        let socket = match self.get_socket() {
+            Ok(socket) => socket,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        self.start_server_by_ip(ip, port, socket.0, types::ProtocolMode::UdpMulticast)?;
+
+        Ok(socket)
+    }
+
+    pub fn begin_udp_packet(
+        &mut self,
+        ip: no_std_net::Ipv4Addr,
+        port: u16,
+    ) -> Result<(), error::Error<T::Error>> {
+        let socket = match self.get_socket() {
+            Ok(socket) => socket,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        self.start_client_by_ip(ip, port, socket, types::ProtocolMode::Udp)?;
+
+        Ok(())
+    }
+
+    pub fn end_udp_packet(&mut self, sock: Socket) -> Result<(), error::Error<T::Error>> {
+        let send_params = (sock.0,);
+        let mut recv_params = (0u8,);
+
+        self.handle_cmd(
+            command::Command::SendDataUdpCmd,
+            &send_params,
+            &mut recv_params,
+        )?;
+
+        let (status,) = recv_params;
+
+        if status != 0 {
+            Err(error::Error::SendDataUdp)
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn udp_write(&mut self, sock: Socket, data: &[u8]) -> Result<(), error::Error<T::Error>> {
+        let send_params = (sock.0, data);
+        let mut recv_params = (0u8,);
+
+        self.handle_long_send_cmd(
+            command::Command::InsertDatabufCmd,
+            &send_params,
+            &mut recv_params,
+        )?;
+
+        let (status,) = recv_params;
+
+        if status != 0 {
+            Err(error::Error::SendDataUdp)
+        } else {
+            Ok(())
+        }
     }
 
     pub fn avail_data(&mut self, socket: types::Socket) -> Result<u16, error::Error<T::Error>> {
