@@ -410,4 +410,8 @@ where
     pub fn stop_server(self, wifi: &mut Wifi<T>) -> Result<(), error::Error<T::Error>> {
         wifi.handler.stop_client(self.socket)
     }
+
+    pub fn get_socket(&self) -> types::Socket {
+        self.socket
+    }
 }
