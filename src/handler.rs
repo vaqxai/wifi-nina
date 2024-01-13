@@ -710,7 +710,7 @@ where
 
         let (status,) = recv_params;
 
-        if status != 0 {
+        if status == 0 {
             Err(error::Error::SendDataUdp)
         } else {
             Ok(())
@@ -729,7 +729,7 @@ where
 
         let (status,) = recv_params;
 
-        if status != 0 {
+        if status == 0 {
             Err(error::Error::SendDataUdp)
         } else {
             Ok(())
