@@ -368,7 +368,8 @@ where
         destination: no_std_net::Ipv4Addr,
         dest_port: u16,
     ) -> Result<(), error::Error<T::Error>> {
-        wifi.handler.begin_udp_packet(destination, dest_port)
+        wifi.handler
+            .begin_udp_packet(self.socket, destination, dest_port)
     }
 
     pub fn write_data(

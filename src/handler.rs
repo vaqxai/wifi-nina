@@ -683,17 +683,11 @@ where
 
     pub fn begin_udp_packet(
         &mut self,
+        sock: Socket,
         ip: no_std_net::Ipv4Addr,
         port: u16,
     ) -> Result<(), error::Error<T::Error>> {
-        let socket = match self.get_socket() {
-            Ok(socket) => socket,
-            Err(e) => {
-                return Err(e);
-            }
-        };
-
-        self.start_client_by_ip(ip, port, socket, types::ProtocolMode::Udp)?;
+        self.start_client_by_ip(ip, port, sock, types::ProtocolMode::Udp)?;
 
         Ok(())
     }
