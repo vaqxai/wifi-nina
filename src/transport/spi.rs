@@ -209,6 +209,8 @@ where
 
         self.cs.set_low().map_err(SpiError::ChipSelect)?;
 
+        let mut timeout = 0;
+
         while self.busy.is_low().map_err(SpiError::Busy)? {
             timeout += 1;
             if timeout > 10_000 {
