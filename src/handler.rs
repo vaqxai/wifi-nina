@@ -698,11 +698,14 @@ where
         let send_params = (client_sock.0,);
         let mut recv_params = (0u8,);
 
-        self.handle_cmd(
+        match self.handle_cmd(
             command::Command::SendDataUdpCmd,
             &send_params,
             &mut recv_params,
-        )?;
+        ) {
+            Ok(_) => {}
+            Err(_) => return Err(error::Error::SendDataUdp("708")),
+        }
 
         let (status,) = recv_params;
 
