@@ -5,6 +5,8 @@ use core::fmt;
 use core::time;
 use embedded_hal::digital::v2::{InputPin, OutputPin};
 
+use super::Transport;
+
 #[derive(Debug)]
 pub struct SpiTransport<SPI, BUSY, RESET, CS, DELAY> {
     spi: SPI,
@@ -198,15 +200,27 @@ where
         )
             -> Result<R, SpiError<SPI::Error, BUSY::Error, RESET::Error, CS::Error>>,
     ) -> Result<R, SpiError<SPI::Error, BUSY::Error, RESET::Error, CS::Error>> {
-        let mut timeout: u32 = 0;
+        let mut tries = 0;
 
-        while self.busy.is_high().map_err(SpiError::Busy)? {}
+        while self.busy.is_high().map_err(SpiError::Busy)? {
+            let _ = self.delay(time::Duration::from_millis(100));
+            tries += 1;
+            if tries > 30 {
+                return Err(self::SpiError::Timeout);
+            }
+        }
 
         self.cs.set_low().map_err(SpiError::ChipSelect)?;
 
-        let mut timeout = 0;
+        let mut tries = 0;
 
-        while self.busy.is_low().map_err(SpiError::Busy)? {}
+        while self.busy.is_low().map_err(SpiError::Busy)? {
+            let _ = self.delay(time::Duration::from_millis(100));
+            tries += 1;
+            if tries > 30 {
+                return Err(self::SpiError::Timeout);
+            }
+        }
 
         let result = func(&mut self.spi);
 
