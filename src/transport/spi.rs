@@ -200,23 +200,13 @@ where
     ) -> Result<R, SpiError<SPI::Error, BUSY::Error, RESET::Error, CS::Error>> {
         let mut timeout: u32 = 0;
 
-        while self.busy.is_high().map_err(SpiError::Busy)? {
-            timeout += 1;
-            if timeout > 500_000_000 {
-                return Err(SpiError::Timeout);
-            }
-        }
+        while self.busy.is_high().map_err(SpiError::Busy)? {}
 
         self.cs.set_low().map_err(SpiError::ChipSelect)?;
 
         let mut timeout = 0;
 
-        while self.busy.is_low().map_err(SpiError::Busy)? {
-            timeout += 1;
-            if timeout > 500_000_000 {
-                return Err(SpiError::Timeout);
-            }
-        }
+        while self.busy.is_low().map_err(SpiError::Busy)? {}
 
         let result = func(&mut self.spi);
 
