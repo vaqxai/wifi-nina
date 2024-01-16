@@ -711,7 +711,7 @@ where
         }
 
         if status == 0 {
-            Err(error::Error::SendDataUdp)
+            Err(error::Error::SendDataUdp("714"))
         } else {
             Ok(())
         }
@@ -730,7 +730,7 @@ where
         let (status,) = recv_params;
 
         if status == 0 {
-            Err(error::Error::SendDataUdp)
+            Err(error::Error::SendDataUdp("733"))
         } else {
             Ok(())
         }

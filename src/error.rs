@@ -11,7 +11,7 @@ pub enum Error<E> {
     SetIpConfig,
     SetDnsConfig,
     SetHostname,
-    SendDataUdp,
+    SendDataUdp(&'static str),
     Disconnect,
     ReqHostByName,
     StartScanNetworks,

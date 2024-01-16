@@ -378,7 +378,7 @@ where
             }
             Err(_) => {
                 log::error!("failed to start packet");
-                Err(error::Error::SendDataUdp)
+                Err(error::Error::SendDataUdp("381"))
             }
         }
     }
@@ -396,7 +396,7 @@ where
             Some(sock) => wifi.handler.end_udp_packet(sock),
             None => {
                 log::error!("no client socket");
-                Err(error::Error::SendDataUdp)
+                Err(error::Error::SendDataUdp("399"))
             }
         }
     }
