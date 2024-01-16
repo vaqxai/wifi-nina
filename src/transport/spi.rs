@@ -206,6 +206,7 @@ where
             let _ = self.delay(time::Duration::from_millis(100));
             tries += 1;
             if tries > 30 {
+                panic!("Waiting for spi busy pin (to be low) for over 3s!");
                 return Err(self::SpiError::Timeout);
             }
         }
@@ -218,6 +219,7 @@ where
             let _ = self.delay(time::Duration::from_millis(100));
             tries += 1;
             if tries > 30 {
+                panic!("Waiting for spi busy pin (to be high) for over 3s!");
                 return Err(self::SpiError::Timeout);
             }
         }
