@@ -681,19 +681,21 @@ where
         Ok(socket)
     }
 
+    /// return's the client's socket
     pub fn begin_udp_packet(
         &mut self,
-        sock: Socket,
         ip: no_std_net::Ipv4Addr,
         port: u16,
-    ) -> Result<(), error::Error<T::Error>> {
+    ) -> Result<Socket, error::Error<T::Error>> {
+        let sock = self.get_socket()?;
+
         self.start_client_by_ip(ip, port, sock, types::ProtocolMode::Udp)?;
 
-        Ok(())
+        Ok(sock)
     }
 
-    pub fn end_udp_packet(&mut self, sock: Socket) -> Result<(), error::Error<T::Error>> {
-        let send_params = (sock.0,);
+    pub fn end_udp_packet(&mut self, client_sock: Socket) -> Result<(), error::Error<T::Error>> {
+        let send_params = (client_sock.0,);
         let mut recv_params = (0u8,);
 
         self.handle_cmd(
@@ -703,6 +705,10 @@ where
         )?;
 
         let (status,) = recv_params;
+
+        if let Err(e) = self.stop_client(client_sock) {
+            return Err(e);
+        }
 
         if status == 0 {
             Err(error::Error::SendDataUdp)

@@ -35,6 +35,7 @@ pub struct Client<T> {
 #[derive(Debug)]
 pub struct ServerUdp<T> {
     socket: types::Socket,
+    client_socket: Option<types::Socket>,
     buffer_offset: usize,
     buffer: arrayvec::ArrayVec<[u8; BUFFER_CAPACITY]>,
     phantom: marker::PhantomData<T>,
@@ -332,6 +333,7 @@ where
                 let phantom = marker::PhantomData;
                 Ok(ServerUdp {
                     socket,
+                    client_socket: None,
                     buffer_offset,
                     buffer,
                     phantom,
@@ -353,6 +355,7 @@ where
                 let phantom = marker::PhantomData;
                 Ok(ServerUdp {
                     socket,
+                    client_socket: None,
                     buffer_offset,
                     buffer,
                     phantom,
@@ -368,8 +371,16 @@ where
         destination: no_std_net::Ipv4Addr,
         dest_port: u16,
     ) -> Result<(), error::Error<T::Error>> {
-        wifi.handler
-            .begin_udp_packet(self.socket, destination, dest_port)
+        match wifi.handler.begin_udp_packet(destination, dest_port) {
+            Ok(client_sock) => {
+                self.client_socket = Some(client_sock);
+                Ok(())
+            }
+            Err(_) => {
+                log::error!("failed to start packet");
+                Err(error::Error::SendDataUdp)
+            }
+        }
     }
 
     pub fn write_data(
@@ -381,7 +392,13 @@ where
     }
 
     pub fn end_packet(&mut self, wifi: &mut Wifi<T>) -> Result<(), error::Error<T::Error>> {
-        wifi.handler.end_udp_packet(self.socket)
+        match self.client_socket {
+            Some(sock) => wifi.handler.end_udp_packet(sock),
+            None => {
+                log::error!("no client socket");
+                Err(error::Error::SendDataUdp)
+            }
+        }
     }
 
     pub fn read_packet(
