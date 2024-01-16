@@ -202,7 +202,7 @@ where
 
         while self.busy.is_high().map_err(SpiError::Busy)? {
             timeout += 1;
-            if timeout > 1_000_000 {
+            if timeout > 2_500_000 {
                 return Err(SpiError::Timeout);
             }
         }
@@ -213,7 +213,7 @@ where
 
         while self.busy.is_low().map_err(SpiError::Busy)? {
             timeout += 1;
-            if timeout > 1_000_000 {
+            if timeout > 2_500_000 {
                 return Err(SpiError::Timeout);
             }
         }
