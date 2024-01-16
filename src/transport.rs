@@ -15,6 +15,8 @@ pub trait Transport {
 
     fn delay(&mut self, duration: time::Duration) -> Result<(), Self::Error>;
 
+    fn is_busy(&mut self) -> Result<bool, Self::Error>;
+
     fn handle_cmd<SP, RP>(
         &mut self,
         command: command::Command,

@@ -108,6 +108,13 @@ where
         })?;
         Ok(())
     }
+
+    #[inline]
+    fn is_busy(
+        &mut self,
+    ) -> Result<bool, SpiError<SPI::Error, BUSY::Error, RESET::Error, CS::Error>> {
+        self.busy.is_high().map_err(SpiError::Busy)
+    }
 }
 
 impl<SPI, BUSY, RESET, CS, DELAY> SpiTransport<SPI, BUSY, RESET, CS, DELAY>

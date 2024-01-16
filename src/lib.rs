@@ -391,9 +391,13 @@ where
     ) -> Result<usize, error::Error<T::Error>> {
         if self.buffer_offset >= self.buffer.len() {
             self.buffer.clear();
-            self.buffer
-                .try_extend_from_slice(&[0; BUFFER_CAPACITY])
-                .unwrap();
+            match self.buffer.try_extend_from_slice(&[0; BUFFER_CAPACITY]) {
+                Ok(_) => {}
+                Err(_) => {
+                    log::error!("buffer overflow");
+                    return Err(error::Error::DataTooLong);
+                }
+            }
             let recv_len = wifi
                 .handler
                 .get_data_buf(self.socket, self.buffer.as_mut())?;

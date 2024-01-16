@@ -916,4 +916,8 @@ where
             .handle_cmd(command, send_params, recv_params, true, true)
             .map_err(error::Error::Transport)
     }
+
+    pub fn is_busy(&mut self) -> Result<bool, error::Error<T::Error>> {
+        self.transport.is_busy().map_err(error::Error::Transport)
+    }
 }
