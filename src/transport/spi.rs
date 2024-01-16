@@ -200,29 +200,11 @@ where
         )
             -> Result<R, SpiError<SPI::Error, BUSY::Error, RESET::Error, CS::Error>>,
     ) -> Result<R, SpiError<SPI::Error, BUSY::Error, RESET::Error, CS::Error>> {
-        let mut tries = 0;
-
-        while self.busy.is_high().map_err(SpiError::Busy)? {
-            let _ = self.delay(time::Duration::from_millis(100));
-            tries += 1;
-            if tries > 30 {
-                panic!("Waiting for spi busy pin (to be low) for over 3s!");
-                return Err(self::SpiError::Timeout);
-            }
-        }
+        while self.busy.is_high().map_err(SpiError::Busy)? {}
 
         self.cs.set_low().map_err(SpiError::ChipSelect)?;
 
-        let mut tries = 0;
-
-        while self.busy.is_low().map_err(SpiError::Busy)? {
-            let _ = self.delay(time::Duration::from_millis(100));
-            tries += 1;
-            if tries > 30 {
-                panic!("Waiting for spi busy pin (to be high) for over 3s!");
-                return Err(self::SpiError::Timeout);
-            }
-        }
+        while self.busy.is_low().map_err(SpiError::Busy)? {}
 
         let result = func(&mut self.spi);
 
