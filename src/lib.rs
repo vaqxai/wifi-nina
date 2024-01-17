@@ -392,8 +392,8 @@ where
         &mut self,
         wifi: &mut Wifi<T>,
         buf: &mut [u8],
-    ) -> Result<u32, error::Error<T::Error>> {
-        if (self.parsed < 1) {
+    ) -> Result<usize, error::Error<T::Error>> {
+        if self.parsed < 1 {
             return Ok(0);
         }
 
@@ -402,7 +402,7 @@ where
         match result {
             Ok(res) => {
                 self.parsed -= res as u16;
-                Ok(res as u32)
+                Ok(res)
             }
             Err(e) => Err(e),
         }
