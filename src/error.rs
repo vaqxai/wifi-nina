@@ -27,4 +27,5 @@ pub enum Error<E> {
     BadEncryptionType(num_enum::TryFromPrimitiveError<types::EncryptionType>),
     BadTcpState(num_enum::TryFromPrimitiveError<types::TcpState>),
     DataTooLong,
+    NoSocketAvailable,
 }

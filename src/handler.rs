@@ -694,8 +694,8 @@ where
         Ok(sock)
     }
 
-    pub fn end_udp_packet(&mut self, client_sock: Socket) -> Result<(), error::Error<T::Error>> {
-        let send_params = (client_sock.0,);
+    pub fn send_udp_data(&mut self, socket: Socket) -> Result<(), error::Error<T::Error>> {
+        let send_params = (socket.0,);
         let mut recv_params = (0u8,);
 
         match self.handle_cmd(
@@ -709,18 +709,18 @@ where
 
         let (status,) = recv_params;
 
-        if let Err(e) = self.stop_client(client_sock) {
-            return Err(e);
-        }
-
-        if status == 0 {
-            Err(error::Error::SendDataUdp("714"))
-        } else {
+        if status == 1 {
             Ok(())
+        } else {
+            Err(error::Error::SendDataUdp("715"))
         }
     }
 
-    pub fn udp_write(&mut self, sock: Socket, data: &[u8]) -> Result<(), error::Error<T::Error>> {
+    pub fn insert_data_buf(
+        &mut self,
+        sock: Socket,
+        data: &[u8],
+    ) -> Result<(), error::Error<T::Error>> {
         let send_params = (sock.0, data);
         let mut recv_params = (0u8,);
 
@@ -732,10 +732,10 @@ where
 
         let (status,) = recv_params;
 
-        if status == 0 {
-            Err(error::Error::SendDataUdp("733"))
-        } else {
+        if status == 1 {
             Ok(())
+        } else {
+            Err(error::Error::SendDataUdp("738"))
         }
     }
 

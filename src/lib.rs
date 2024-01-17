@@ -15,6 +15,7 @@ pub mod types;
 
 pub use error::Error;
 use types::ConnectionState;
+use types::ProtocolMode;
 
 const BUFFER_CAPACITY: usize = 4096;
 
@@ -32,12 +33,12 @@ pub struct Client<T> {
     phantom: marker::PhantomData<T>,
 }
 
+const NO_SOCKET_AVAIL: u8 = 255;
+
 #[derive(Debug)]
-pub struct ServerUdp<T> {
+pub struct SocketUdp<T> {
     socket: types::Socket,
-    client_socket: Option<types::Socket>,
-    buffer_offset: usize,
-    buffer: arrayvec::ArrayVec<[u8; BUFFER_CAPACITY]>,
+    parsed: u16,
     phantom: marker::PhantomData<T>,
 }
 
@@ -321,119 +322,106 @@ where
     }
 }
 
-impl<T> ServerUdp<T>
+impl<T> SocketUdp<T>
 where
     T: transport::Transport,
 {
-    pub fn start_server(wifi: &mut Wifi<T>, port: u16) -> Result<Self, error::Error<T::Error>> {
-        match wifi.handler.start_udp_server(port) {
-            Ok(socket) => {
-                let buffer_offset = 0;
-                let buffer = arrayvec::ArrayVec::new();
-                let phantom = marker::PhantomData;
-                Ok(ServerUdp {
-                    socket,
-                    client_socket: None,
-                    buffer_offset,
-                    buffer,
-                    phantom,
-                })
-            }
-            Err(e) => Err(e),
+    pub fn new(wifi: &mut Wifi<T>, port: u16) -> Result<Self, error::Error<T::Error>> {
+        let sock = wifi.handler.get_socket()?;
+
+        if sock.0 != NO_SOCKET_AVAIL {
+            wifi.handler.start_server(port, sock.0, ProtocolMode::Udp)?;
+
+            Ok(Self {
+                socket: sock,
+                parsed: 0,
+                phantom: marker::PhantomData::<T>,
+            })
+        } else {
+            Err(Error::NoSocketAvailable)
         }
     }
 
-    pub fn start_server_at_ip(
+    pub fn available(&self) -> u16 {
+        self.parsed
+    }
+
+    pub fn stop(self, wifi: &mut Wifi<T>) -> Result<(), error::Error<T::Error>> {
+        if self.socket.0 == NO_SOCKET_AVAIL {
+            return Err(Error::NoSocketAvailable);
+        }
+
+        wifi.handler.stop_client(self.socket)?;
+        Ok(())
+    }
+
+    pub fn begin_packet(
+        &mut self,
         wifi: &mut Wifi<T>,
-        ip: no_std_net::Ipv4Addr,
+        dest: no_std_net::Ipv4Addr,
         port: u16,
-    ) -> Result<Self, error::Error<T::Error>> {
-        match wifi.handler.start_udp_server_multicast(ip, port) {
-            Ok(socket) => {
-                let buffer_offset = 0;
-                let buffer = arrayvec::ArrayVec::new();
-                let phantom = marker::PhantomData;
-                Ok(ServerUdp {
-                    socket,
-                    client_socket: None,
-                    buffer_offset,
-                    buffer,
-                    phantom,
-                })
+    ) -> Result<(), error::Error<T::Error>> {
+        if self.socket.0 == NO_SOCKET_AVAIL {
+            self.socket = wifi.handler.get_socket()?;
+        }
+
+        if self.socket.0 != NO_SOCKET_AVAIL {
+            wifi.handler
+                .start_client_by_ip(dest, port, self.socket, ProtocolMode::Udp)?;
+            Ok(())
+        } else {
+            Err(Error::NoSocketAvailable)
+        }
+    }
+
+    pub fn end_packet(&self, wifi: &mut Wifi<T>) -> Result<(), error::Error<T::Error>> {
+        wifi.handler.send_udp_data(self.socket)?;
+        Ok(())
+    }
+
+    pub fn write(&self, wifi: &mut Wifi<T>, buf: &[u8]) -> Result<(), error::Error<T::Error>> {
+        wifi.handler.insert_data_buf(self.socket, buf)
+    }
+
+    pub fn parse_packet(&mut self, wifi: &mut Wifi<T>) -> Result<u16, error::Error<T::Error>> {
+        self.parsed = wifi.handler.avail_data(self.socket)?;
+        Ok(self.parsed)
+    }
+
+    pub fn read(
+        &mut self,
+        wifi: &mut Wifi<T>,
+        buf: &mut [u8],
+    ) -> Result<u32, error::Error<T::Error>> {
+        if (self.parsed < 1) {
+            return Ok(0);
+        }
+
+        let result = wifi.handler.get_data_buf(self.socket, buf);
+
+        match result {
+            Ok(res) => {
+                self.parsed -= res as u16;
+                Ok(res as u32)
             }
             Err(e) => Err(e),
         }
     }
 
-    pub fn start_packet(
-        &mut self,
+    pub fn remote_ip(
+        &self,
         wifi: &mut Wifi<T>,
-        destination: no_std_net::Ipv4Addr,
-        dest_port: u16,
-    ) -> Result<(), error::Error<T::Error>> {
-        match wifi.handler.begin_udp_packet(destination, dest_port) {
-            Ok(client_sock) => {
-                self.client_socket = Some(client_sock);
-                Ok(())
-            }
-            Err(_) => {
-                log::error!("failed to start packet");
-                Err(error::Error::SendDataUdp("381"))
-            }
+    ) -> Result<no_std_net::Ipv4Addr, error::Error<T::Error>> {
+        match wifi.handler.get_remote_data(self.socket) {
+            Ok(data) => Ok(data.ip),
+            Err(e) => Err(e),
         }
     }
 
-    pub fn write_data(
-        &mut self,
-        wifi: &mut Wifi<T>,
-        data: &[u8],
-    ) -> Result<(), error::Error<T::Error>> {
-        wifi.handler.udp_write(self.socket, data)
-    }
-
-    pub fn end_packet(&mut self, wifi: &mut Wifi<T>) -> Result<(), error::Error<T::Error>> {
-        match self.client_socket {
-            Some(sock) => wifi.handler.end_udp_packet(sock),
-            None => {
-                log::error!("no client socket");
-                Err(error::Error::SendDataUdp("399"))
-            }
+    pub fn remote_port(&self, wifi: &mut Wifi<T>) -> Result<u16, error::Error<T::Error>> {
+        match wifi.handler.get_remote_data(self.socket) {
+            Ok(data) => Ok(data.port as u16),
+            Err(e) => Err(e),
         }
-    }
-
-    pub fn read_packet(
-        &mut self,
-        wifi: &mut Wifi<T>,
-        buffer: &mut [u8],
-    ) -> Result<usize, error::Error<T::Error>> {
-        if self.buffer_offset >= self.buffer.len() {
-            self.buffer.clear();
-            match self.buffer.try_extend_from_slice(&[0; BUFFER_CAPACITY]) {
-                Ok(_) => {}
-                Err(_) => {
-                    log::error!("buffer overflow");
-                    return Err(error::Error::DataTooLong);
-                }
-            }
-            let recv_len = wifi
-                .handler
-                .get_data_buf(self.socket, self.buffer.as_mut())?;
-            self.buffer.truncate(recv_len);
-            self.buffer_offset = 0;
-            log::debug!("fetched new buffer of len {}", self.buffer.len());
-        }
-
-        let len = buffer.len().min(self.buffer.len() - self.buffer_offset);
-        buffer[..len].copy_from_slice(&self.buffer[self.buffer_offset..self.buffer_offset + len]);
-        self.buffer_offset += len;
-        Ok(len)
-    }
-
-    pub fn stop_server(self, wifi: &mut Wifi<T>) -> Result<(), error::Error<T::Error>> {
-        wifi.handler.stop_client(self.socket)
-    }
-
-    pub fn get_socket(&self) -> types::Socket {
-        self.socket
     }
 }
